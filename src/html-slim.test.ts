@@ -465,4 +465,38 @@ const noSpace = (html: string) => html
             assert.equal(slim({space: false})(html), expected)
         })
     })
+
+    describe('sibling links after removal', () => {
+        // Removal compacts the children array and rebuilds prev/next links;
+        // these guard the boundaries and runs of that rebuild.
+        it('removal at both edges', () => {
+            assert.equal(slim()(`<div><!--x-->A<!--y--></div>`), `<div>A</div>`)
+        })
+
+        it('all children removed', () => {
+            assert.equal(slim()(`<div><!--x--><!--y--></div>`), `<div></div>`)
+        })
+
+        it('a run of consecutive removals', () => {
+            assert.equal(slim()(`<div>A<!--x--><!--y--><!--z-->B</div>`), `<div>AB</div>`)
+        })
+
+        it('links rebuilt by one pass are read by the next', () => {
+            // the second transformer joins across a text node emptied by the first
+            const fn = slim([{}, {tag: "^em$"}])
+            assert.equal(fn(`<div>A<!--x-->B<em>y</em>C</div>`), `<div>ABC</div>`)
+        })
+
+        it('many comments between text', () => {
+            const n = 1000
+            const html = `<div>${`A<!-- c -->`.repeat(n)}</div>`
+            assert.equal(slim()(html), `<div>${`A`.repeat(n)}</div>`)
+        })
+
+        it('many comments between elements', () => {
+            const n = 1000
+            const html = `<div>${`<!-- c --><span>x</span>`.repeat(n)}</div>`
+            assert.equal(slim()(html), `<div>${`<span>x</span>`.repeat(n)}</div>`)
+        })
+    })
 }

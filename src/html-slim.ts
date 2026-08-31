@@ -1,6 +1,6 @@
 import {compile} from "css-select"
 import {render} from "dom-serializer"
-import type {Comment, Document, Element, Node, NodeWithChildren, Text} from "domhandler"
+import type {ChildNode, Comment, Document, Element, Node, NodeWithChildren, Text} from "domhandler"
 import type * as declared from "html-slim"
 import {parseDocument} from "htmlparser2"
 
@@ -124,15 +124,27 @@ const getTransformFn = (options: declared.Slim.Options) => {
         }
 
         /**
-         * delete elements
+         * delete elements. A splice per node costs O(remaining siblings),
+         * which turns comment-heavy documents quadratic. Compact the
+         * survivors in one pass instead, rebuilding their sibling links.
          */
-        for (let i = deleting.length - 1; i >= 0; i--) {
-            const pos = deleting[i]
-            const child = children[pos]
-            const {prev, next} = child
-            children.splice(pos, 1)
-            if (prev) prev.next = next
-            if (next) next.prev = prev
+        if (deleting.length) {
+            let w = 0
+            let d = 0
+            let prev: ChildNode | null = null
+            for (let i = 0; i < children.length; i++) {
+                if (deleting[d] === i) {
+                    d++
+                    continue
+                }
+                const child = children[i]
+                child.prev = prev
+                child.next = null
+                if (prev) prev.next = child
+                prev = child
+                children[w++] = child
+            }
+            children.length = w
         }
 
         if (removeSpace) {
@@ -150,6 +162,7 @@ const getTransformFn = (options: declared.Slim.Options) => {
                     while ((next = next.next) && isText(next)) {
                         child.data = child.data + next.data
                         next.data = ""
+                        i++ // skip the emptied node: revisiting it would rescan the run
                     }
 
                     /**
