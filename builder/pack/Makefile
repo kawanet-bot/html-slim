@@ -50,7 +50,12 @@ test-cli:
 test-iife:
 	cd ../.. && (cat $(PKG_ROOT)/dist/html-slim.min.js && echo '; for (const k of process.argv.slice(2)) { if (typeof eval(k) !== "function") { console.error("missing browser export:", k); process.exit(1); } console.log("browser export OK:", k); }') | node - $(NAMED_EXPORTS)
 
+# Publish gate: the same behavior checks, run against the checkout's own
+# staged artifacts in place -- no tarball install involved.
+test-dist:
+	$(MAKE) test-bundled test-cli test-iife PKG_ROOT=.
+
 clean:
 	/bin/rm -f *.tgz
 
-.PHONY: all pack bundled unpack test test-bundled test-bin test-cli test-iife clean
+.PHONY: all pack bundled unpack test test-bundled test-bin test-cli test-iife test-dist clean
