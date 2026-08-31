@@ -30,7 +30,7 @@ const keepSpace: Record<string, 1> = {
 
 type Testable = {test(name: string): boolean}
 
-const toTestable = (v: string | Testable): Testable | undefined => {
+const toTestable = (v: string | Testable | undefined): Testable | undefined => {
     if (!v) return
     if ("string" === typeof v) {
         return new RegExp(v, "i")
@@ -158,7 +158,7 @@ const getTransformFn = (options: declared.Slim.Options) => {
                      * join text nodes. Siblings become adjacent only after a
                      * node between them is removed, so join in document order.
                      */
-                    let next = child as Node
+                    let next: ChildNode | null = child
                     while ((next = next.next) && isText(next)) {
                         child.data = child.data + next.data
                         next.data = ""

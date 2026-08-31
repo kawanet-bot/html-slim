@@ -52,7 +52,7 @@ async function readStdin() {
         if (name !== key) {
             const desc = options[key]
             if (desc?.type === "boolean") {
-                type BooleanKeys<T> = {[K in keyof T]: T[K] extends boolean ? K : never}[keyof T]
+                type BooleanKeys<T> = {[K in keyof T]-?: T[K] extends boolean | undefined ? K : never}[keyof T]
                 params[name as BooleanKeys<typeof params>] = !values[key]
                 delete values[key]
             }

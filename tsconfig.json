@@ -22,7 +22,7 @@
     "noUnusedParameters": true,
     "removeComments": false,
     "skipLibCheck": false,
-    "strictNullChecks": false,
+    "strictNullChecks": true,
     "target": "ES2022",
     "types": [
       "node"
