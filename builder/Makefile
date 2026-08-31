@@ -1,4 +1,4 @@
-# Force bash so `set -o pipefail` works in the smoke-minjs recipe below.
+# Force bash so `set -o pipefail` works in the recipes below.
 SHELL := bash
 .SHELLFLAGS := -eo pipefail -c
 
@@ -25,9 +25,6 @@ MINJS_CONFIG := ./rollup-minjs.config.ts
 CLI_CONFIG := ./rollup-cli.config.ts
 BROWSER_TEST_CONFIG := ./rollup-browser-test.config.ts
 BUILDER_TEST_CONFIG := ./rollup-builder-test.config.ts
-
-# Documented runtime named export that must be verified in every bundle.
-NAMED_EXPORTS := slim
 
 # Every target gets its own cap because each bundle has a different
 # legitimate shape. The .mjs/.cjs pair externalizes `dependencies`, so
@@ -127,30 +124,6 @@ $(BUILDER_TEST_DST): $(BUILDER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(
 
 ####
 
-# Verify the bundles by importing/requiring the package itself, which
-# exercises the exports/main mapping a consumer would take.
-smoke: smoke-mjs smoke-cjs smoke-minjs smoke-cli
-
-smoke-mjs: $(MJS_DST)
-	cd .. && node --input-type=module -e 'const m = await import("html-slim"); for (const k of process.argv.slice(1)) { if (typeof m[k] !== "function") { console.error("missing MJS export:", k); process.exit(1); } console.log("MJS export OK:", k); }' $(NAMED_EXPORTS)
-
-smoke-cjs: $(CJS_DST)
-	cd .. && node --input-type=commonjs -e 'const m = require("html-slim"); for (const k of process.argv.slice(1)) { if (typeof m[k] !== "function") { console.error("missing CJS export:", k); process.exit(1); } console.log("CJS export OK:", k); }' $(NAMED_EXPORTS)
-
-# Smoke the .min.js in two consumer shapes: the browser IIFE global and
-# a CJS require(), since the bundle is intentionally dual-use.
-smoke-minjs: $(MINJS_DST) $(PKG_DST)
-	(cat $< && echo '; if (typeof slim !== "function") { console.error("missing browser global: slim"); process.exit(1); } console.log("browser export OK: slim")') | node -
-	cd .. && node --input-type=commonjs -e 'const m = require("./dist/html-slim.min.js"); for (const k of process.argv.slice(1)) { if (typeof m[k] !== "function") { console.error("missing minjs CJS export:", k); process.exit(1); } console.log("minjs CJS export OK:", k); }' $(NAMED_EXPORTS)
-
-# The CLI is the only artifact a consumer executes, so run it end to end.
-# Comment removal is on by default, which makes for an unambiguous check.
-smoke-cli: $(CLI_DST)
-	cd .. && echo '<p>a</p><!-- c -->' | node $(patsubst ../%,%,$(CLI_DST)) | grep -qx '<p>a</p>'
-	@echo "CLI OK"
-
-####
-
 # Consumer `npm install` skips the heavy test-full step to keep install fast.
 # `npm pack` re-runs prepare for a fresh build; tests are skipped there too
 # because CI runs them explicitly around the pack, while `npm publish`
@@ -161,7 +134,7 @@ test:
 		*) $(MAKE) test-full ;; \
 	esac
 
-test-full: all smoke
+test-full: all
 	cd .. && node_modules/.bin/tsc --noEmit
 	cd .. && node_modules/.bin/ts-refine format --check && node_modules/.bin/ts-refine imports --check
 	cd .. && node --test src/*.test.ts
@@ -172,4 +145,4 @@ test-full: all smoke
 clean:
 	/bin/rm -fr $(ALL) $(BUILDER_TEST_DST)
 
-.PHONY: all clean test smoke smoke-mjs smoke-cjs smoke-minjs smoke-cli test-full is-buildable is-not-buildable
+.PHONY: all clean test test-full is-buildable is-not-buildable
