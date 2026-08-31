@@ -108,7 +108,7 @@ const getTransformFn = (options: declared.Slim.Options) => {
          * detect elements to be deleted
          */
         for (let i = 0; i < children.length; i++) {
-            const child = children[i]
+            const child = children[i]!
 
             if ((isElement(child) &&
                 ((selectFn && selectFn(child)) ||
@@ -137,7 +137,7 @@ const getTransformFn = (options: declared.Slim.Options) => {
                     d++
                     continue
                 }
-                const child = children[i]
+                const child = children[i]!
                 child.prev = prev
                 child.next = null
                 if (prev) prev.next = child
@@ -151,7 +151,7 @@ const getTransformFn = (options: declared.Slim.Options) => {
             let others = 0
 
             for (let i = 0; i < children.length; i++) {
-                const child = children[i]
+                const child = children[i]!
 
                 if (isText(child)) {
                     /**
