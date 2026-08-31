@@ -2,6 +2,7 @@
 *.js
 *.mjs
 !browser/import.cjs
+!browser/tests.cli.mjs
 *.js.gz
 *.js.map
 *.swp
