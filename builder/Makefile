@@ -1,4 +1,4 @@
-# Force bash so `set -o pipefail` works in the smoke-minjs recipe below.
+# Force bash so `set -o pipefail` works in the recipes below.
 SHELL := bash
 .SHELLFLAGS := -eo pipefail -c
 
@@ -16,18 +16,15 @@ MJS_DST := ../dist/html-slim.mjs
 CJS_DST := ../dist/html-slim.cjs
 MINJS_DST := ../dist/html-slim.min.js
 CLI_DST := ../bin/html-slim.cli.js
-TEST_DST := ../browser/tests/bundled.js
-TESTS_DST := ../builder/tests/bundled.js
+BROWSER_TEST_DST := ../browser/tests/bundled.js
+BUILDER_TEST_DST := ./tests/bundled.mjs
 
 MJS_CONFIG := ./rollup-mjs.config.ts
 CJS_CONFIG := ./rollup-cjs.config.ts
 MINJS_CONFIG := ./rollup-minjs.config.ts
 CLI_CONFIG := ./rollup-cli.config.ts
-TEST_CONFIG := ./rollup-test.config.ts
-TESTS_CONFIG := ./rollup-tests.config.ts
-
-# Documented runtime named export that must be verified in every bundle.
-NAMED_EXPORTS := slim
+BROWSER_TEST_CONFIG := ./rollup-browser-test.config.ts
+BUILDER_TEST_CONFIG := ./rollup-builder-test.config.ts
 
 # Every target gets its own cap because each bundle has a different
 # legitimate shape. The .mjs/.cjs pair externalizes `dependencies`, so
@@ -50,11 +47,11 @@ CLI_MAX_BYTES := 8000
 # browser/import.cjs so it does not count toward this.
 TEST_MAX_BYTES := 30000
 
-ALL := $(MJS_DST) $(CJS_DST) $(MINJS_DST) $(CLI_DST) $(TEST_DST) $(TESTS_DST)
+ALL := $(MJS_DST) $(CJS_DST) $(MINJS_DST) $(CLI_DST) $(BROWSER_TEST_DST)
 
 # Build/test paths require Node's native TypeScript type-strip (default on
 # Node 22.18+). Older runtimes (e.g. Node 20) report BUILDABLE=NO and can
-# still verify pre-built bundles via `make smoke`.
+# still verify pre-built bundles via the builder/pack targets.
 BUILDABLE := $(shell node -e 'console.log(process.features.typescript ? "YES" : "NO")')
 
 ####
@@ -109,7 +106,7 @@ $(PKG_DST):
 	@echo ""
 
 # Browser test bundle loaded by browser/tests.html
-$(TEST_DST): $(TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(BROWSER_SRC) $(MINJS_DST)
+$(BROWSER_TEST_DST): $(BROWSER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(BROWSER_SRC) $(MINJS_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<
 	@ls -l $@
@@ -118,7 +115,7 @@ $(TEST_DST): $(TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(BROWSER_SRC) $(M
 
 # Plain-JS bundle of the test suites, importing the package by name.
 # Runs against dist/ on any supported Node runtime without type-strip.
-$(TESTS_DST): $(TESTS_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(MJS_DST)
+$(BUILDER_TEST_DST): $(BUILDER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(MJS_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<
 	@ls -l $@
@@ -127,38 +124,17 @@ $(TESTS_DST): $(TESTS_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(MJS_DST)
 
 ####
 
-# Verify the bundles by importing/requiring the package itself, which
-# exercises the exports/main mapping a consumer would take.
-smoke: smoke-mjs smoke-cjs smoke-minjs smoke-cli
-
-smoke-mjs: $(MJS_DST)
-	cd .. && node --input-type=module -e 'const m = await import("html-slim"); for (const k of process.argv.slice(1)) { if (typeof m[k] !== "function") { console.error("missing MJS export:", k); process.exit(1); } console.log("MJS export OK:", k); }' $(NAMED_EXPORTS)
-
-smoke-cjs: $(CJS_DST)
-	cd .. && node --input-type=commonjs -e 'const m = require("html-slim"); for (const k of process.argv.slice(1)) { if (typeof m[k] !== "function") { console.error("missing CJS export:", k); process.exit(1); } console.log("CJS export OK:", k); }' $(NAMED_EXPORTS)
-
-# Smoke the .min.js in two consumer shapes: the browser IIFE global and
-# a CJS require(), since the bundle is intentionally dual-use.
-smoke-minjs: $(MINJS_DST) $(PKG_DST)
-	(cat $< && echo '; if (typeof slim !== "function") { console.error("missing browser global: slim"); process.exit(1); } console.log("browser export OK: slim")') | node -
-	cd .. && node --input-type=commonjs -e 'const m = require("./dist/html-slim.min.js"); for (const k of process.argv.slice(1)) { if (typeof m[k] !== "function") { console.error("missing minjs CJS export:", k); process.exit(1); } console.log("minjs CJS export OK:", k); }' $(NAMED_EXPORTS)
-
-# The CLI is the only artifact a consumer executes, so run it end to end.
-# Comment removal is on by default, which makes for an unambiguous check.
-smoke-cli: $(CLI_DST)
-	cd .. && echo '<p>a</p><!-- c -->' | node $(patsubst ../%,%,$(CLI_DST)) | grep -qx '<p>a</p>'
-	@echo "CLI OK"
-
-####
-
 # Consumer `npm install` skips the heavy test-full step to keep install fast.
+# `npm pack` re-runs prepare for a fresh build; tests are skipped there too
+# because CI runs them explicitly around the pack, while `npm publish`
+# reports npm_command=publish and still gets the full run.
 test:
 	@case "$$npm_command" in \
-		install|ci) echo "npm $$npm_command detected: skipping full tests." ;; \
+		install|ci|pack) echo "npm $$npm_command detected: skipping full tests." ;; \
 		*) $(MAKE) test-full ;; \
 	esac
 
-test-full: all smoke
+test-full: all
 	cd .. && node_modules/.bin/tsc --noEmit
 	cd .. && node_modules/.bin/ts-refine format --check && node_modules/.bin/ts-refine imports --check
 	cd .. && node --test src/*.test.ts
@@ -167,6 +143,6 @@ test-full: all smoke
 ####
 
 clean:
-	/bin/rm -fr $(ALL)
+	/bin/rm -fr $(ALL) $(BUILDER_TEST_DST)
 
-.PHONY: all clean test smoke smoke-mjs smoke-cjs smoke-minjs smoke-cli test-full is-buildable is-not-buildable
+.PHONY: all clean test test-full is-buildable is-not-buildable
