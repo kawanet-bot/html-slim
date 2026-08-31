@@ -5,6 +5,11 @@ SHELL := bash
 # Documented runtime named export every consumer shape must expose.
 NAMED_EXPORTS := slim
 
+# Root of the copy under test: the installed package after `unpack`, or
+# the checkout itself (PKG_ROOT=.) for the publish gate, which runs the
+# staged artifacts in place without installing anything.
+PKG_ROOT ?= node_modules/html-slim
+
 # Package-side lifecycle: `pack` builds the tarball (renamed to the fixed
 # packed.tgz), `unpack` installs it (--no-save also works in a checkout),
 # `test` exercises it. Build `bundled` only after `pack`: npm pack runs
@@ -21,24 +26,31 @@ bundled:
 unpack:
 	cd ../.. && npm install ./builder/pack/packed.tgz --no-audit --no-fund --no-save
 
-test: test-bundled test-bin test-iife
+test: test-bundled test-bin test-cli test-iife
 
 # Resolves through node_modules after `unpack`; inside a checkout the
 # package name self-references dist/ instead.
 test-bundled:
 	cd ../.. && node --test builder/tests/bundled.mjs
 
-# The CLI runs end to end through the installed bin link. Comment removal
-# is on by default, which makes for an unambiguous check.
+# npm accepts a broken bin mapping silently -- the .bin link is just
+# never created -- so assert the link exists, resolves and is executable.
+# Launching the file itself is test-cli's job.
 test-bin:
-	cd ../.. && echo '<p>a</p><!-- c -->' | ./node_modules/.bin/html-slim | grep -qx '<p>a</p>'
+	[ -x ../../node_modules/.bin/html-slim ]
 
-# Script-context run of the installed minified bundle: the browser IIFE
-# consumer shape, and proof that the tarball ships the file.
+# The CLI end to end -- shebang, executable bit, comment removal --
+# against $(PKG_ROOT), so it also runs with no install involved.
+test-cli:
+	cd ../.. && echo '<p>a</p><!-- c -->' | ./$(PKG_ROOT)/bin/html-slim.cli.js | grep -qx '<p>a</p>'
+
+# Script-context run of the minified bundle under $(PKG_ROOT): the browser
+# IIFE consumer shape; in the default root it also proves the tarball
+# ships the file.
 test-iife:
-	(cat ../../node_modules/html-slim/dist/html-slim.min.js && echo '; for (const k of process.argv.slice(2)) { if (typeof eval(k) !== "function") { console.error("missing browser export:", k); process.exit(1); } console.log("browser export OK:", k); }') | node - $(NAMED_EXPORTS)
+	cd ../.. && (cat $(PKG_ROOT)/dist/html-slim.min.js && echo '; for (const k of process.argv.slice(2)) { if (typeof eval(k) !== "function") { console.error("missing browser export:", k); process.exit(1); } console.log("browser export OK:", k); }') | node - $(NAMED_EXPORTS)
 
 clean:
 	/bin/rm -f *.tgz
 
-.PHONY: all pack bundled unpack test test-bundled test-bin test-iife clean
+.PHONY: all pack bundled unpack test test-bundled test-bin test-cli test-iife clean

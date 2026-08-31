@@ -43,7 +43,7 @@ jobs:
       - run: npm run build
       - run: npm test
       - run: make -C builder/pack bundled
-      - run: make -C builder/pack test-bundled
+      - run: make -C builder/pack test-bundled test-cli test-iife PKG_ROOT=.
 
       # Everything generated now lands in dist/, except the CLI which keeps
       # its published path under bin/. The rest of the files entry is
