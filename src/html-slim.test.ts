@@ -426,7 +426,11 @@ const noSpace = (html: string) => html
         })
 
         it(`null`, () => {
-            assert.equal(slim(null)(html), expected)
+            assert.equal(slim(null as any)(html), expected)
+        })
+
+        it(`undefined`, () => {
+            assert.equal(slim(undefined)(html), expected)
         })
     })
 

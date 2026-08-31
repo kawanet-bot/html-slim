@@ -30,7 +30,7 @@ const keepSpace: Record<string, 1> = {
 
 type Testable = {test(name: string): boolean}
 
-const toTestable = (v: string | Testable): Testable | undefined => {
+const toTestable = (v: string | Testable | undefined): Testable | undefined => {
     if (!v) return
     if ("string" === typeof v) {
         return new RegExp(v, "i")
@@ -108,7 +108,7 @@ const getTransformFn = (options: declared.Slim.Options) => {
          * detect elements to be deleted
          */
         for (let i = 0; i < children.length; i++) {
-            const child = children[i]
+            const child = children[i]!
 
             if ((isElement(child) &&
                 ((selectFn && selectFn(child)) ||
@@ -137,7 +137,7 @@ const getTransformFn = (options: declared.Slim.Options) => {
                     d++
                     continue
                 }
-                const child = children[i]
+                const child = children[i]!
                 child.prev = prev
                 child.next = null
                 if (prev) prev.next = child
@@ -151,14 +151,14 @@ const getTransformFn = (options: declared.Slim.Options) => {
             let others = 0
 
             for (let i = 0; i < children.length; i++) {
-                const child = children[i]
+                const child = children[i]!
 
                 if (isText(child)) {
                     /**
                      * join text nodes. Siblings become adjacent only after a
                      * node between them is removed, so join in document order.
                      */
-                    let next = child as Node
+                    let next: ChildNode | null = child
                     while ((next = next.next) && isText(next)) {
                         child.data = child.data + next.data
                         next.data = ""
