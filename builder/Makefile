@@ -13,25 +13,22 @@ BROWSER_SRC := $(wildcard ../browser/*.cjs)
 
 PKG_DST := ../dist/package.json
 MJS_DST := ../dist/html-slim.mjs
-CJS_DST := ../dist/html-slim.cjs
 MINJS_DST := ../dist/html-slim.min.js
 CLI_DST := ../bin/html-slim.cli.js
 BROWSER_TEST_DST := ../browser/tests/bundled.js
 BUILDER_TEST_DST := ./tests/bundled.mjs
 
 MJS_CONFIG := ./rollup-mjs.config.ts
-CJS_CONFIG := ./rollup-cjs.config.ts
 MINJS_CONFIG := ./rollup-minjs.config.ts
 CLI_CONFIG := ./rollup-cli.config.ts
 BROWSER_TEST_CONFIG := ./rollup-browser-test.config.ts
 BUILDER_TEST_CONFIG := ./rollup-builder-test.config.ts
 
 # Every target gets its own cap because each bundle has a different
-# legitimate shape. The .mjs/.cjs pair externalizes `dependencies`, so
-# these two only ever hold this package's own code — six figures here
-# would mean htmlparser2 and friends leaked in.
+# legitimate shape. The .mjs externalizes `dependencies`, so it only ever
+# holds this package's own code — six figures here would mean htmlparser2
+# and friends leaked in.
 MJS_MAX_BYTES := 12000
-CJS_MAX_BYTES := 12000
 
 # The browser bundle inlines `dependencies` on purpose: nothing resolves
 # node_modules at the other end. The cap therefore guards against
@@ -47,7 +44,7 @@ CLI_MAX_BYTES := 8000
 # browser/import.cjs so it does not count toward this.
 TEST_MAX_BYTES := 30000
 
-ALL := $(MJS_DST) $(CJS_DST) $(MINJS_DST) $(CLI_DST)
+ALL := $(MJS_DST) $(MINJS_DST) $(CLI_DST)
 
 # Build/test paths require Node's native TypeScript type-strip (default on
 # Node 22.18+). Older runtimes (e.g. Node 20) report BUILDABLE=NO and can
@@ -76,13 +73,6 @@ $(MJS_DST): $(MJS_CONFIG) $(SRC) $(BUILDER_SRC)
 	@test "$$(wc -c < $@)" -le $(MJS_MAX_BYTES) || { echo "ERROR: $@ exceeds $(MJS_MAX_BYTES) byte cap" >&2; exit 1; }
 	@echo ""
 
-$(CJS_DST): $(CJS_CONFIG) $(SRC) $(BUILDER_SRC)
-	@mkdir -p $(dir $@)
-	../node_modules/.bin/rollup -c $<
-	@ls -l $@
-	@test "$$(wc -c < $@)" -le $(CJS_MAX_BYTES) || { echo "ERROR: $@ exceeds $(CJS_MAX_BYTES) byte cap" >&2; exit 1; }
-	@echo ""
-
 $(MINJS_DST): $(MINJS_CONFIG) $(SRC) $(BUILDER_SRC) $(PKG_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<
@@ -92,7 +82,7 @@ $(MINJS_DST): $(MINJS_CONFIG) $(SRC) $(BUILDER_SRC) $(PKG_DST)
 
 # The CLI resolves the library through the package name, so it needs the
 # published entrypoints in place before it can be bundled.
-$(CLI_DST): $(CLI_CONFIG) $(CLI_SRC) $(BUILDER_SRC) $(MJS_DST) $(CJS_DST)
+$(CLI_DST): $(CLI_CONFIG) $(CLI_SRC) $(BUILDER_SRC) $(MJS_DST)
 	../node_modules/.bin/rollup -c $<
 	@chmod +x $@
 	@ls -l $@
@@ -143,6 +133,6 @@ test-full: all
 ####
 
 clean:
-	/bin/rm -fr $(ALL) $(BROWSER_TEST_DST) $(BUILDER_TEST_DST)
+	/bin/rm -fr $(ALL) $(BROWSER_TEST_DST) $(BUILDER_TEST_DST) $(PKG_DST)
 
 .PHONY: all clean test test-full is-buildable is-not-buildable

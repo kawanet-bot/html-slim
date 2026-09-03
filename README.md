@@ -39,6 +39,31 @@ const compactHtml = slimFn(originalHtml);
 const {slim} = require("html-slim");
 ```
 
+On Node.js 20.19 and later `require()` reaches the ES module directly. Below
+that it resolves to the bundled build instead, which carries its own copy of
+the parser rather than loading the ESM-only dependencies.
+
+## PROCESSING INSTRUCTIONS
+
+HTML has no processing instructions. `<?php ?>`, `<?xml ?>` and malformed
+declarations such as `<! foo >` parse as comments, which this removes by
+default:
+
+```html
+<div><?php echo 1; ?></div>
+<div><! foo ></div>
+```
+
+becomes:
+
+```html
+<div></div>
+<div></div>
+```
+
+`{comment: false}` keeps them, but as comments — `<?php` comes back as
+`<!--?php`. Run this on rendered output, not on templates.
+
 ## BROWSERS
 
 ```js
