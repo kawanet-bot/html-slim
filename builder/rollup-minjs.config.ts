@@ -8,8 +8,10 @@ import {showFiles} from "./show-files.ts"
 const rollupConfig: RollupOptions = {
     input: "../src/html-slim.ts",
 
-    // No `external` here, unlike the .mjs/.cjs configs: nothing resolves
-    // node_modules in a browser, so `dependencies` must be inlined.
+    // No `external` here, unlike the .mjs config: nothing resolves
+    // node_modules in a browser, so `dependencies` must be inlined. The
+    // same property makes this bundle the `require` entry below Node
+    // 20.19, where the ESM-only dependencies cannot be required at all.
     output: {
         file: "../dist/html-slim.min.js",
         format: "iife",
@@ -19,8 +21,8 @@ const rollupConfig: RollupOptions = {
         // `var slim = {slim: <fn>}` (a namespace global). Override with an
         // early `return exports.slim;` so the global is `var slim = <fn>`
         // (callable directly). The leading `module.exports = exports` makes
-        // the same bundle usable as a CJS module, matching the named-export
-        // shape published by `dist/html-slim.cjs`. Rollup's auto-return
+        // the same bundle usable as a CJS module, which is what the
+        // `require` export condition resolves to. Rollup's auto-return
         // becomes unreachable and terser drops it.
         outro: "if (typeof module !== 'undefined') { module.exports = exports }\nreturn exports.slim;",
     },

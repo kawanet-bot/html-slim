@@ -42,7 +42,8 @@
   "exports": {
     ".": {
       "types": "./types/html-slim.d.ts",
-      "require": "./dist/html-slim.cjs",
+      "module-sync": "./dist/html-slim.mjs",
+      "require": "./dist/html-slim.min.js",
       "import": "./dist/html-slim.mjs"
     }
   },
@@ -51,7 +52,6 @@
     "README.md",
     "bin/html-slim.cli.js",
     "browser/import.cjs",
-    "dist/html-slim.cjs",
     "dist/html-slim.min.js",
     "dist/html-slim.mjs",
     "dist/package.json",
@@ -71,7 +71,7 @@
     "whitespace"
   ],
   "license": "MIT",
-  "main": "./dist/html-slim.cjs",
+  "main": "./dist/html-slim.min.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kawanet/html-slim.git"
