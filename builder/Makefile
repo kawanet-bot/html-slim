@@ -28,16 +28,16 @@ BUILDER_TEST_CONFIG := ./rollup-builder-test.config.ts
 # legitimate shape. The .mjs externalizes `dependencies`, so it only ever
 # holds this package's own code — six figures here would mean htmlparser2
 # and friends leaked in.
-MJS_MAX_BYTES := 12000
+MJS_MAX_BYTES := 10000
 
 # The browser bundle inlines `dependencies` on purpose: nothing resolves
 # node_modules at the other end. The cap therefore guards against
 # unexpected growth rather than against a dep leak.
-MINJS_MAX_BYTES := 130000
+MINJS_MAX_BYTES := 110000
 
 # The CLI externalizes both `dependencies` and the package itself, so it
 # carries little more than argv handling.
-CLI_MAX_BYTES := 8000
+CLI_MAX_BYTES := 5000
 
 # The browser test bundle inlines the test sources plus the node:test and
 # node:assert shims. The package is externalized through
@@ -128,7 +128,6 @@ test-full: all
 	cd .. && node_modules/.bin/tsc --noEmit
 	cd .. && node_modules/.bin/ts-refine format --check && node_modules/.bin/ts-refine imports --check
 	cd .. && node --test src/*.test.ts
-
 
 ####
 
