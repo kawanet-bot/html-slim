@@ -43,6 +43,21 @@ On Node.js 20.19 and later `require()` reaches the ES module directly. Below
 that it resolves to the bundled build instead, which carries its own copy of
 the parser rather than loading the ESM-only dependencies.
 
+## PROCESSING INSTRUCTIONS
+
+Anything the HTML parser treats as a bogus comment is removed together with
+real comments, which is on by default. That covers PHP and ASP style
+processing instructions, XML declarations and malformed markup declarations:
+
+```html
+<div><?php echo 1; ?></div>     <!-- becomes <div></div> -->
+<div><?xml-stylesheet href="a.xsl"?></div>
+<div><! foo ></div>
+```
+
+Pass `{comment: false}` to keep them, or run this on rendered output rather
+than on templates.
+
 ## BROWSERS
 
 ```js
