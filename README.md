@@ -45,18 +45,24 @@ the parser rather than loading the ESM-only dependencies.
 
 ## PROCESSING INSTRUCTIONS
 
-Anything the HTML parser treats as a bogus comment is removed together with
-real comments, which is on by default. That covers PHP and ASP style
-processing instructions, XML declarations and malformed markup declarations:
+HTML has no processing instructions. `<?php ?>`, `<?xml ?>` and malformed
+declarations such as `<! foo >` parse as comments, which this removes by
+default:
 
 ```html
-<div><?php echo 1; ?></div>     <!-- becomes <div></div> -->
-<div><?xml-stylesheet href="a.xsl"?></div>
+<div><?php echo 1; ?></div>
 <div><! foo ></div>
 ```
 
-Pass `{comment: false}` to keep them, or run this on rendered output rather
-than on templates.
+becomes:
+
+```html
+<div></div>
+<div></div>
+```
+
+`{comment: false}` keeps them, but as comments — `<?php` comes back as
+`<!--?php`. Run this on rendered output, not on templates.
 
 ## BROWSERS
 
