@@ -39,6 +39,10 @@ const compactHtml = slimFn(originalHtml);
 const {slim} = require("html-slim");
 ```
 
+On Node.js 20.19 and later `require()` reaches the ES module directly. Below
+that it resolves to the bundled build instead, which carries its own copy of
+the parser rather than loading the ESM-only dependencies.
+
 ## BROWSERS
 
 ```js
